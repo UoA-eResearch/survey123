@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Survey123 results</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"
+        integrity="sha512-VW8/i4IZkHxdD8OlqNdF7fGn3ba0+lYqag+Uy4cG6BtJ/LIr8t23s/vls70pQ41UasHH0tL57GQfKDApqc9izA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <div id="plot"></div>
+
+    <script>
+        var url = "https://services2.arcgis.com/OKRmMRUG6dRnfUBh/ArcGIS/rest/services/survey123_76e72b6460df4d599440dcb56a67b763_results/FeatureServer/0/query?where=1=1&f=json&outFields=*";
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+            })
+            .catch(error => console.log(error));
+    </script>
+</body>
+
+</html>
