@@ -5,10 +5,11 @@ import json
 import pandas as pd
 import os
 
+FILENAME = os.getenv("FILENAME", "motuora_raw_data_SR.csv")
 ORGANISATION_ID = os.getenv("ORGANISATION_ID", "OKRmMRUG6dRnfUBh")
 SERVICE = os.getenv("SERVICE", "survey123_76e72b6460df4d599440dcb56a67b763_form")
 
-df = pd.read_csv("motuora_raw_data_SR.csv")
+df = pd.read_csv(FILENAME)
 features = [{"attributes": a} for a in df.to_dict("records")]
 print(len(features))
 
