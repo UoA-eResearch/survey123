@@ -7,17 +7,76 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"
         integrity="sha512-VW8/i4IZkHxdD8OlqNdF7fGn3ba0+lYqag+Uy4cG6BtJ/LIr8t23s/vls70pQ41UasHH0tL57GQfKDApqc9izA=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"
+        integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
-    <div id="plot"></div>
-
     <script>
         var url = "https://services2.arcgis.com/OKRmMRUG6dRnfUBh/ArcGIS/rest/services/survey123_76e72b6460df4d599440dcb56a67b763_results/FeatureServer/0/query?where=1=1&f=json&outFields=*";
         fetch(url)
             .then(response => response.json())
             .then(data => {
-                console.log(data)
+                window.data = data;
+                console.log(data);
+                var locations = new Set(data.features.map(f => f.attributes.location))
+                console.log(locations);
+                for (var location of locations) {
+                    var data_for_location = data.features.filter(f => f.attributes.location == location)
+                    var sampleids = Array.from(new Set(data_for_location.map(f => f.attributes.sampleid)))
+                    var plot_data = {}
+                    for (var sampleid of sampleids) {
+                        var data_for_location_and_sampleid = data_for_location.filter(f => f.attributes.sampleid == sampleid)
+                        var length_mm = data_for_location_and_sampleid.map(f => f.attributes.length_mm).filter(mm => mm != null)
+                        if (length_mm.length) {
+                            plot_data[sampleid] = {
+                                "mean": math.mean(length_mm),
+                                "stderr": math.std(length_mm) / math.sqrt(length_mm.length)
+                            }
+                        }
+                    }
+                    sampleids = sampleids.filter(sampleid => plot_data[sampleid])
+                    console.log(plot_data)
+                    // Define the x and y values for the bar plot
+                    const x = sampleids;
+                    const y = sampleids.map(sampleid => plot_data[sampleid].mean)
+
+                    // Define the error values
+                    const errorY = {
+                        type: 'data',
+                        array: sampleids.map(sampleid => plot_data[sampleid].stderr),
+                        visible: true,
+                        color: 'black',
+                    };
+
+                    // Define the layout of the plot
+                    const layout = {
+                        //title: location,
+                        xaxis: {
+                            //title: 'Average size [mm] ± SE',
+                        },
+                        yaxis: {
+                            title: 'Average size [mm] ± SE',
+                        },
+                    };
+
+                    // Define the data for the plot
+                    var plot_data = [
+                        {
+                            x: x,
+                            y: y,
+                            type: 'bar',
+                            error_y: errorY,
+                        },
+                    ];
+
+                    var id = `plot_${location}`
+                    $("body").append(`<div id='${id}'></div>`)
+
+                    // Generate the plot
+                    Plotly.newPlot(id, plot_data, layout);
+                }
             })
             .catch(error => console.log(error));
     </script>
