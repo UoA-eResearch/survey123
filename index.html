@@ -21,58 +21,121 @@
                 window.data = data;
                 console.log(data);
                 var locations = new Set(data.features.map(f => f.attributes.location))
-                console.log(locations);
+                console.log("Locations", locations);
                 for (var location of locations) {
+                    console.log(location)
+                    $("body").append(`<h3>${location}</h3>`)
                     var data_for_location = data.features.filter(f => f.attributes.location == location)
                     var sampleids = Array.from(new Set(data_for_location.map(f => f.attributes.sampleid)))
-                    var plot_data = {}
+                    var substrates = Array.from(new Set(data_for_location.map(f => f.attributes.substrate))).filter(s => s != null)
+                    console.log("Substrates", substrates)
+                    var stats = {}
                     for (var sampleid of sampleids) {
                         var data_for_location_and_sampleid = data_for_location.filter(f => f.attributes.sampleid == sampleid)
-                        var length_mm = data_for_location_and_sampleid.map(f => f.attributes.length_mm).filter(mm => mm != null)
-                        if (length_mm.length) {
-                            plot_data[sampleid] = {
-                                "mean": math.mean(length_mm),
-                                "stderr": math.std(length_mm) / math.sqrt(length_mm.length)
+                        if (substrates.length) {
+                            for (var substrate of substrates) {
+                                var data_for_location_and_sampleid_and_substrates = data_for_location_and_sampleid.filter(f => f.attributes.substrate == substrate)
+                                var length_mm = data_for_location_and_sampleid_and_substrates.map(f => f.attributes.length_mm).filter(mm => mm != null)
+                                if (length_mm.length) {
+                                    stats[`${substrate}_${sampleid}`] = {
+                                        "mean": math.mean(length_mm),
+                                        "stderr": math.std(length_mm) / math.sqrt(length_mm.length)
+                                    }
+                                }
+                            }
+                        } else {
+                            var length_mm = data_for_location_and_sampleid.map(f => f.attributes.length_mm).filter(mm => mm != null)
+                            if (length_mm.length) {
+                                stats[sampleid] = {
+                                    "mean": math.mean(length_mm),
+                                    "stderr": math.std(length_mm) / math.sqrt(length_mm.length)
+                                }
                             }
                         }
                     }
-                    sampleids = sampleids.filter(sampleid => plot_data[sampleid])
-                    console.log(plot_data)
-                    // Define the x and y values for the bar plot
-                    const x = sampleids;
-                    const y = sampleids.map(sampleid => plot_data[sampleid].mean)
+                    console.log("Stats", stats)
+                    var plot_data = [];
+                    var layout;
+                    if (substrates.length) {
+                        for (var substrate of substrates) {
+                            // Combine substrate with sampleid
+                            var these_sampleids = sampleids.map(sampleid => `${substrate}_${sampleid}`)
+                            // Check we have stats for this sampleid
+                            these_sampleids = these_sampleids.filter(sampleid => stats[sampleid])
+                            console.log(these_sampleids)
 
-                    // Define the error values
-                    const errorY = {
-                        type: 'data',
-                        array: sampleids.map(sampleid => plot_data[sampleid].stderr),
-                        visible: true,
-                        color: 'black',
-                    };
+                            // Define the x and y values for the bar plot
+                            const x = these_sampleids;
+                            const y = these_sampleids.map(sampleid => stats[sampleid].mean)
 
-                    // Define the layout of the plot
-                    const layout = {
-                        //title: location,
-                        xaxis: {
-                            //title: 'Average size [mm] ± SE',
-                        },
-                        yaxis: {
-                            title: 'Average size [mm] ± SE',
-                        },
-                    };
+                            // Define the error values
+                            const errorY = {
+                                type: 'data',
+                                array: these_sampleids.map(sampleid => stats[sampleid].stderr),
+                                visible: true,
+                                color: 'black',
+                            };
 
-                    // Define the data for the plot
-                    var plot_data = [
-                        {
+                            // Define the data for the plot
+                            plot_data.push({
+                                x: x,
+                                y: y,
+                                type: 'bar',
+                                name: substrate,
+                                error_y: errorY,
+                            })
+                        }
+
+                        // Define the layout of the plot
+                        layout = {
+                            //title: location,
+                            xaxis: {
+                                //title: 'Average size [mm] ± SE',
+                            },
+                            yaxis: {
+                                title: 'Average size [mm] ± SE',
+                            },
+                            //grid: {rows: 2, columns: 1, pattern: 'independent'},
+                        };
+                    } else {
+                        sampleids = sampleids.filter(sampleid => stats[sampleid])
+                        // Define the x and y values for the bar plot
+                        const x = sampleids;
+                        const y = sampleids.map(sampleid => stats[sampleid].mean)
+
+                        // Define the error values
+                        const errorY = {
+                            type: 'data',
+                            array: sampleids.map(sampleid => stats[sampleid].stderr),
+                            visible: true,
+                            color: 'black',
+                        };
+
+                        // Define the layout of the plot
+                        layout = {
+                            //title: location,
+                            xaxis: {
+                                //title: 'Average size [mm] ± SE',
+                            },
+                            yaxis: {
+                                title: 'Average size [mm] ± SE',
+                            },
+                        };
+
+                        // Define the data for the plot
+                        plot_data.push({
                             x: x,
                             y: y,
                             type: 'bar',
                             error_y: errorY,
-                        },
-                    ];
+                        })
+                    }
 
                     var id = `plot_${location}`
                     $("body").append(`<div id='${id}'></div>`)
+
+                    console.log(plot_data)
+                    console.log(layout)
 
                     // Generate the plot
                     Plotly.newPlot(id, plot_data, layout);
